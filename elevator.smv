@@ -225,16 +225,7 @@ CTLSPEC NAME fanAtive := AG EF(e1.activateFan = TRUE & e1.temperature >= 2)
 CTLSPEC NAME fanInactive := AG EF(e1.activateFan = FALSE & e1.temperature < 2)
 
 
--- 6. Optimize movement to serve more people concurrently
--- 
---
---
-
-
--- 7. See req 3. section
-
-
--- 8. Fire alarm. Must not serve people if it set on. Ensure safety if its already serving a request
+-- 6. Fire alarm. Must not serve people if it set on. Ensure safety if its already serving a request
 CTLSPEC AG(f.fire = TRUE) -> (e1.floor = 1) & e1.door_2_open -- IF FIRE, elevator will go to floor 1 and open proper door.
 CTLSPEC AG(f.fire = TRUE) -> !EF(e1.floor = 2) -- Will not serve requests if FIRE is TRUE
 INVARSPEC f.fire = TRUE -> ctrl.GO_STOP
