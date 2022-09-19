@@ -1,0 +1,242 @@
+-- ######  ELEVATOR  ###### --
+
+MODULE Elevator(cmd_up, cmd_down, cmd_none, cmd_stop)
+    VAR
+        floor : 1..5;
+        door2 : boolean; -- 
+        door1 : boolean;
+        temperature : 0..6; -- temperature inside cabin, intervals of 1 = 10 celcius
+        activateFan : boolean; -- activates if temperature variable is 2 or more
+        over_weight_capacity : boolean;
+
+    ASSIGN
+        
+
+
+
+        init(floor) := 1;
+        next(floor) :=
+            case
+
+                floor = 5 & !ok_to_move_down & !ok_to_move_up & cmd_stop: 1;
+                floor = 4 & !ok_to_move_down & !ok_to_move_up & cmd_stop: 1;
+                floor = 3 & !ok_to_move_down & !ok_to_move_up & cmd_stop: 1;
+                floor = 2 & !ok_to_move_down & !ok_to_move_up & cmd_stop: 1;
+
+                -- move up
+                cmd_up & floor = 1 & ok_to_move_up : 2;
+                cmd_up & floor = 2 & ok_to_move_up : 3;
+                cmd_up & floor = 3 & ok_to_move_up : 4;
+                cmd_up & floor = 4 & ok_to_move_up : 5;
+                
+
+                -- move down
+                cmd_down & floor = 5 & ok_to_move_down : 4;
+                cmd_down & floor = 4 & ok_to_move_down : 3;
+                cmd_down & floor = 3 & ok_to_move_down : 2;
+                cmd_down & floor = 2 & ok_to_move_down : 1;
+
+
+
+                cmd_none : floor;
+                TRUE : floor;
+            esac;
+
+                
+        activateFan := fanOn;
+
+
+
+    DEFINE
+        
+
+        -- when a door is open and which door at which floor
+        door_2_open := (floor = 1 | floor = 2 | floor = 4 | floor = 5) & door2 = TRUE;
+        door_1_open := (floor = 3) & door1 = TRUE;
+
+        -- when it's ok to move 
+        ok_to_move_up :=  (!door_2_open & !door_1_open) & over_weight_capacity = FALSE;
+        ok_to_move_down := (!door_2_open & !door_1_open) & over_weight_capacity = FALSE;
+        
+        
+
+        
+        fanOn := temperature >= 2;
+        
+
+-- Button MODULE. Is defined by parameters
+MODULE Button(release)
+   
+
+
+
+MODULE Controller(el1_floor, el1_door2, el1_door1, -- Variables from elevator1
+                  e2_floor, e2_door2, e2_door1, -- Variables from elevator2
+                  bf1up_pressed, bf2up_pressed, bf3up_pressed, bf4up_pressed, -- Floor button request up
+                  bf2down_pressed, bf3down_pressed, bf4down_pressed, bf5_pressed, -- Floor button request down pressed
+                  fire_alarm) 
+
+    VAR
+        -- Reset: Button floor 1
+        reset_fb1Up : boolean;
+
+        -- Reset: Buttons floor 2
+        reset_fb2Up : boolean;
+        reset_fb2Down : boolean;
+
+        -- Reset: Buttons floor 3
+        reset_fb3Up : boolean;
+        reset_fb3Down : boolean;
+
+        -- Reset: Buttons floor 4
+        reset_fb4Up : boolean;
+        reset_fb4Down : boolean;
+
+        -- Reset: Button floor 5
+        reset_fb5Down : boolean;
+
+        
+        -- move_cmd : {go_up, go_down, none};
+        -- move commands
+        cmd_up : boolean;
+        cmd_down : boolean;
+        cmd_none : boolean;
+        cmd_stop : boolean;
+
+    ASSIGN
+        -- Checks if a button is pressed and should be released/reset to TRUE. TRUE: Yes button is released
+        reset_fb1Up := el1_floor = 5 | e2_floor = 5;  -- IF THIS then TRUE
+        reset_fb2Up := el1_floor = 5 | e2_floor = 5;
+        reset_fb3Up := el1_floor = 5 | e2_floor = 5;
+        reset_fb4Up := el1_floor = 5 | e2_floor = 5;
+        -- Reset down buttons
+        reset_fb2Down := el1_floor = 1 | e2_floor = 1;
+        reset_fb3Down := el1_floor = 1 | e2_floor = 1;
+        reset_fb4Down := el1_floor = 1 | e2_floor = 1;
+        reset_fb5Down := el1_floor = 1 | e2_floor = 1;
+
+
+        -- SE DEFINE 
+        cmd_up := GO_UP;
+        cmd_down := GO_DOWN;
+        cmd_none := GO_NONE;
+        
+
+        init(cmd_stop) := FALSE;
+        next(cmd_stop) :=
+            case
+                fire_alarm = TRUE : TRUE;
+                TRUE : cmd_stop;
+            esac;
+        
+    
+        
+
+    DEFINE
+
+
+        GO_UP := !(reset_fb1Up | reset_fb2Up | reset_fb3Up | reset_fb4Up);
+        
+        GO_DOWN := !(reset_fb5Down | reset_fb2Down | reset_fb3Down | reset_fb4Down);
+       
+        GO_NONE := (reset_fb1Up & reset_fb2Up & reset_fb3Up & reset_fb4Up & 
+                    reset_fb5Down &reset_fb2Down & reset_fb3Down & reset_fb4Down);
+
+        GO_STOP := fire_alarm = TRUE;
+
+
+MODULE Fire_alarm()
+    VAR
+        fire : boolean;
+
+    ASSIGN
+        init(fire) := FALSE;
+
+
+
+
+MODULE main
+    VAR
+        ctrl : Controller(e1.floor, e1.door2, e1.door1, 
+               e2.floor, e2.door2, e2.door1, 
+               b1up, b2up, b3up, b4up,
+               b2down, b3down, b4down, b5down,
+               f.fire);
+
+        e1 : process Elevator(ctrl.cmd_up, ctrl.cmd_down, ctrl.cmd_none, ctrl.cmd_stop);
+        e2 : process Elevator(ctrl.cmd_up, ctrl.cmd_down, ctrl.cmd_none, ctrl.cmd_stop);
+        f : Fire_alarm();
+
+        -- REQUIREMENT 2. there exits 8 buttons in total. Only one that can be activated at floor 1 and floor 5
+        -- initalizing buttons going up
+        b1up : Button(ctrl.reset_fb1Up);
+        b2up : Button(ctrl.reset_fb2Up);
+        b3up : Button(ctrl.reset_fb3Up);
+        b4up : Button(ctrl.reset_fb4Up);
+
+        -- initalizing buttons going down
+        b2down : Button(ctrl.reset_fb2Down);
+        b3down : Button(ctrl.reset_fb3Down);
+        b4down : Button(ctrl.reset_fb4Down);
+        b5down : Button(ctrl.reset_fb5Down);
+
+
+
+
+-- REQUREMENT LIST
+
+-- 1. Two elevators, two doors. Can reach all floors.  CHECK
+CTLSPEC AG (e1.floor = 1 -> EF e1.floor = 5) | AG (e2.floor = 5 -> EF e2.floor = 1)
+CTLSPEC AG (e1.floor = 5 -> EF e1.floor = 1) | AG (e2.floor = 5 -> EF e2.floor = 1)
+-- MÅ LEGGE TIL ELEVATOR 2
+
+
+-- 2. Each floor has buttons. CHECK
+--    See comment in main
+
+
+-- REQUREMENT 3 and 7 below
+-- 3. 3rd floor, door1 can be opened, every other floor door 1 can be opened. 
+-- 7. Must not move while doors are open.
+
+INVARSPEC (e1.door_2_open & (!e1.ok_to_move_down | !e1.ok_to_move_up) -> e1.floor != 3) &
+            (e1.door_1_open & (!e1.ok_to_move_down | !e1.ok_to_move_up) -> e1.floor = 3)
+
+-- 
+CTLSPEC NAME DoorOpen1down := !EF(e1.door_2_open = TRUE & (e1.ok_to_move_down = TRUE)) 
+CTLSPEC NAME DoorOpen2down := !EF(e1.door_1_open = TRUE & (e1.ok_to_move_down = TRUE))
+CTLSPEC NAME DoorOpen1up := !EF(e1.door_2_open = TRUE  &(e1.ok_to_move_down = TRUE))
+CTLSPEC NAME DoorOpen2up := !EF(e1.door_1_open = TRUE & (e1.ok_to_move_down = TRUE))
+
+-- If doors are open it implies that its not ok to move up or down
+CTLSPEC AG(e1.door_2_open = TRUE -> (e1.ok_to_move_down = FALSE))
+CTLSPEC AG(e1.door_2_open = TRUE -> (e1.ok_to_move_up = FALSE))
+INVARSPEC ((e1.door_1_open | e1.door_2_open) -> (e1.ok_to_move_up = FALSE | e1.ok_to_move_down = FALSE))
+
+
+
+-- 4. overweight sensor. Wont move if over weight capacity is TRUE
+INVARSPEC (e1.ok_to_move_down -> e1.over_weight_capacity = FALSE) & (e1.ok_to_move_up -> e1.over_weight_capacity = FALSE)
+
+
+-- 5. Fan automatically turns on if needed
+-- Fan is automatically turned on and off
+CTLSPEC NAME fanAtive := AG EF(e1.activateFan = TRUE & e1.temperature >= 2)
+CTLSPEC NAME fanInactive := AG EF(e1.activateFan = FALSE & e1.temperature < 2)
+
+
+-- 6. Optimize movement to serve more people concurrently
+-- 
+--
+--
+
+
+-- 7. See req 3. section
+
+
+-- 8. Fire alarm. Must not serve people if it set on. Ensure safety if its already serving a request
+CTLSPEC AG(f.fire = TRUE) -> (e1.floor = 1) & e1.door_2_open -- IF FIRE, elevator will go to floor 1 and open proper door.
+CTLSPEC AG(f.fire = TRUE) -> !EF(e1.floor = 2) -- Will not serve requests if FIRE is TRUE
+INVARSPEC f.fire = TRUE -> ctrl.GO_STOP
+
+
