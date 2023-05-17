@@ -1,5 +1,5 @@
 
-# NuSMV elevator thing
+# NuSMV elevator model checking
 If you are reading this, you probably are vaguely familiar with NuSMV as a tool for model checking. Then you are also probably familiar with temporal logic (hurray!). The smv format which is the format that NuSMV can run is somewhat confusing markup-ish language.
 
 This is some code for a previous school project. If you want confusing code, which doesn't work optimally, feel free to use this as inspiration.
